@@ -6,6 +6,10 @@ A Rust desktop application that captures system audio, transcribes it using Open
 
 - 🎤 **Real-time Audio Capture**: Records system audio in configurable chunks
 - 📝 **Automatic Transcription**: Uses OpenAI Whisper API to convert audio to text
+- 📺 **Live Streaming Display**: Real-time transcription view with auto-scroll and fade-in effects
+- 🔍 **Search & Filter**: Search through transcriptions with highlighting
+- 📊 **Statistics**: Live word count, character count, and duration tracking
+- 💾 **Export Options**: Export transcripts to plain text or Markdown format
 - 🤖 **AI Summarization**: Generates conversation summaries and extracts action items
 - 💾 **Persistent Storage**: Saves transcriptions and summaries to local files
 - ⚙️ **Configurable**: Adjustable chunk duration, real-time vs batch processing
@@ -96,20 +100,30 @@ By default, files are stored in:
    - Audio is automatically chunked, transcribed, and (optionally) summarized
 
 4. **Monitor Progress**
-   - Watch the "Transcriptions" section for real-time text
+   - Watch the "📺 Live Transcript" panel for real-time transcription updates
+   - New transcriptions appear with a green highlight and fade-in effect
+   - View live statistics: word count, character count, and duration
+   - Use the search bar to find specific content in transcriptions
+   - Toggle timestamps, statistics, and auto-scroll as needed
    - View summaries in the "Latest Summary" section
    - Check action items as they're identified
 
-5. **Stop Listening**
+5. **Export Transcripts**
+   - Click "💾 Export Transcript" to save your transcription
+   - Choose between Plain Text (.txt) or Markdown (.md) format
+   - Click "📋 Copy All" to copy the entire transcript to clipboard
+
+6. **Stop Listening**
    - Click "⏹ Stop Listening" when done
    - If not in real-time mode, click "📝 Generate Summary" to create final summary
 
 ### Use Cases
 
-- **Meeting Notes**: Capture and summarize video calls
-- **Lecture Recording**: Transcribe educational content with key points
-- **Interview Transcription**: Record conversations with automatic action items
-- **Podcast Analysis**: Get summaries and takeaways from audio content
+- **Meeting Notes**: Capture and summarize video calls with live transcript view
+- **Lecture Recording**: Transcribe educational content with searchable text
+- **Interview Transcription**: Record conversations with live display and export
+- **Podcast Analysis**: Get summaries and searchable transcripts from audio content
+- **Research Interviews**: Search and filter through long conversations efficiently
 
 ## Linux Audio Setup
 
@@ -256,16 +270,49 @@ Key Rust crates used:
 - Never commit your config file to version control
 - Audio files may contain sensitive information - handle appropriately
 
+## Recent Enhancements
+
+### Live Streaming Transcription Display ✅
+The application now includes a comprehensive live streaming transcription display with:
+
+- **📺 Real-time View**: Dedicated live transcript panel that's always visible when listening
+- **🎨 Visual Effects**: New transcriptions appear with green highlight and fade-in animation
+- **⬇ Auto-scroll**: Automatically scrolls to show the latest transcription
+- **🕐 Timestamps**: Toggle timestamps for each segment (format: HH:MM:SS)
+- **📊 Live Statistics**: Real-time tracking of:
+  - Word count
+  - Character count
+  - Total duration
+- **🔍 Search & Filter**: 
+  - Search through all transcriptions in real-time
+  - Highlight matching segments
+  - Display match count
+- **📋 Quick Actions**:
+  - Copy all transcriptions to clipboard with one click
+  - Status indicators (LIVE/STOPPED)
+  - Processing queue display
+- **💾 Export Options**:
+  - Plain Text (.txt) with headers and statistics
+  - Markdown (.md) with formatted sections
+- **📝 Detailed View**: Collapsible section with file information for each segment
+
+### Configuration Options
+- Toggle timestamps on/off
+- Toggle statistics display
+- Toggle auto-scroll behavior
+- Toggle search highlighting
+
 ## Future Enhancements
 
 Potential improvements:
 - [ ] Select specific audio input device in GUI
-- [ ] Export summaries to different formats (PDF, Markdown, etc.)
+- [ ] Export summaries to PDF format
 - [ ] Local Whisper model support (no API costs)
 - [ ] Support for macOS and Windows
 - [ ] Custom prompt templates for summarization
 - [ ] Speaker diarization (identify different speakers)
-- [ ] Live streaming transcription display
+- [ ] Word-by-word live animation
+- [ ] Keyboard shortcuts for common actions
 
 ## Contributing
 

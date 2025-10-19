@@ -69,14 +69,42 @@ Same steps as above - PipeWire is compatible with PulseAudio tools.
 
 1. Click the **"🎤 Start Listening"** button (turns red)
 2. Play some audio (YouTube video, podcast, meeting call, etc.)
-3. Watch the **Transcriptions** section fill up automatically
-4. Wait for summaries to appear in the **Latest Summary** section
+3. Watch the **"📺 Live Transcript"** panel - transcriptions appear in real-time!
+   - New segments fade in with a green highlight
+   - Panel auto-scrolls to show the latest content
+   - See live statistics: word count, character count, and duration
+4. Wait for summaries to appear in the **Latest Summary** section (if real-time processing is enabled)
 
-## Step 6: Stop and Review
+## Step 6: Use Live Features
+
+While listening, try these interactive features:
+
+**Search & Filter** 🔍
+- Type in the search box to filter transcriptions
+- Matching segments are highlighted in yellow
+- See match count in real-time
+
+**Statistics** 📊
+- Toggle the "Stats" checkbox to show/hide live metrics
+- View total words, characters, and session duration
+
+**Timestamps** 🕐
+- Toggle timestamps on/off
+- Shows segment number and time for each transcription
+
+**Auto-scroll** ⬇
+- Uncheck to manually scroll and review earlier content
+- Re-enable to jump back to latest transcriptions
+
+## Step 7: Stop and Review
 
 1. Click **"⏹ Stop Listening"** when done
-2. Review your transcriptions and summaries
-3. Check out any action items that were identified
+2. Review your transcriptions using the search feature
+3. Click **"📋 Copy All"** to copy entire transcript to clipboard
+4. Use **"💾 Export Transcript"** to save as:
+   - Plain Text (.txt) - simple format with statistics
+   - Markdown (.md) - formatted with headers and sections
+5. Check out any action items in the summary section
 
 ## Files Location
 
@@ -92,10 +120,12 @@ All your data is saved in:
 
 **Simple Test**:
 1. Start Listening
-2. Play this YouTube video: "Ted Talk" (any short one)
+2. Play a YouTube video: "Ted Talk" (any short one)
 3. Wait 30-60 seconds
-4. Check the Transcriptions section
-5. Look for the auto-generated summary
+4. Watch the **Live Transcript** panel fill up in real-time
+5. Try searching for a word from the video
+6. Click "Copy All" or "Export Transcript" to save
+7. Look for the auto-generated summary (if real-time processing is enabled)
 
 ## Troubleshooting Quick Fixes
 
@@ -126,12 +156,23 @@ systemctl --user restart pulseaudio
 ### For Meetings
 - **Chunk Duration**: 30-60 seconds works best
 - **Real-time Processing**: Enable for live notes
+- **Live Transcript**: Keep auto-scroll enabled to follow along
+- Use search during breaks to find specific topics discussed
+- Export as Markdown at the end for sharing
 - Start listening before the meeting begins
 
 ### For Podcasts/Videos
 - **Chunk Duration**: 60 seconds for better context
 - **Real-time Processing**: Can disable and summarize at the end
+- **Search Feature**: Great for finding specific quotes or topics
 - Quality depends on audio clarity
+- Export for later reference or note-taking
+
+### For Research Interviews
+- **Live Search**: Find topics mentioned earlier without stopping
+- **Timestamps**: Track when specific topics were discussed
+- **Statistics**: Monitor interview length and content density
+- **Export**: Save transcripts for analysis
 
 ### To Save Money
 - Increase chunk duration (fewer API calls)

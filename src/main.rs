@@ -44,6 +44,16 @@ struct AudioAssistantApp {
     chunk_duration_input: String,
     status_message: String,
     error_message: String,
+
+    // Live streaming display state
+    auto_scroll_enabled: bool,
+    show_timestamps: bool,
+    show_statistics: bool,
+    last_transcription_time: Option<std::time::Instant>,
+
+    // Search/filter state
+    search_query: String,
+    highlight_search: bool,
 }
 
 impl AudioAssistantApp {
@@ -68,6 +78,12 @@ impl AudioAssistantApp {
             chunk_duration_input,
             status_message: "Ready".to_string(),
             error_message: String::new(),
+            auto_scroll_enabled: true,
+            show_timestamps: true,
+            show_statistics: true,
+            last_transcription_time: None,
+            search_query: String::new(),
+            highlight_search: true,
         }
     }
 
@@ -200,6 +216,7 @@ impl AudioAssistantApp {
     fn handle_transcription(&mut self, result: TranscriptionResult) {
         self.pending_transcriptions = self.pending_transcriptions.saturating_sub(1);
         self.transcriptions.push(result.clone());
+        self.last_transcription_time = Some(std::time::Instant::now());
 
         println!("Transcription received: {}", result.text);
 
@@ -264,6 +281,123 @@ impl AudioAssistantApp {
             self.error_message = format!("Failed to save config: {}", e);
         } else {
             self.status_message = "Configuration saved".to_string();
+        }
+    }
+
+    fn export_transcript_txt(&mut self) {
+        if self.transcriptions.is_empty() {
+            self.error_message = "No transcriptions to export".to_string();
+            return;
+        }
+
+        let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+        let filename = format!("transcript_{}.txt", timestamp);
+        let filepath = self.config.transcriptions_dir.join(&filename);
+
+        let mut content = String::new();
+        content.push_str("=== AUDIO ASSISTANT TRANSCRIPT ===\n");
+        content.push_str(&format!(
+            "Generated: {}\n",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
+        ));
+        content.push_str(&format!("Total segments: {}\n", self.transcriptions.len()));
+
+        // Add statistics
+        let total_text: String = self
+            .transcriptions
+            .iter()
+            .map(|t| t.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let word_count = total_text.split_whitespace().count();
+        let char_count = total_text.chars().count();
+        content.push_str(&format!("Word count: {}\n", word_count));
+        content.push_str(&format!("Character count: {}\n\n", char_count));
+        content.push_str("=====================================\n\n");
+
+        for (i, trans) in self.transcriptions.iter().enumerate() {
+            content.push_str(&format!(
+                "[Segment {}] {}\n",
+                i + 1,
+                trans.timestamp.format("%H:%M:%S")
+            ));
+            content.push_str(&trans.text);
+            content.push_str("\n\n");
+        }
+
+        match std::fs::write(&filepath, content) {
+            Ok(_) => {
+                self.status_message = format!("Transcript exported to: {:?}", filename);
+                println!("Transcript exported to: {:?}", filepath);
+            }
+            Err(e) => {
+                self.error_message = format!("Failed to export transcript: {}", e);
+            }
+        }
+    }
+
+    fn export_transcript_markdown(&mut self) {
+        if self.transcriptions.is_empty() {
+            self.error_message = "No transcriptions to export".to_string();
+            return;
+        }
+
+        let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+        let filename = format!("transcript_{}.md", timestamp);
+        let filepath = self.config.transcriptions_dir.join(&filename);
+
+        let mut content = String::new();
+        content.push_str("# Audio Assistant Transcript\n\n");
+        content.push_str(&format!(
+            "**Generated:** {}\n\n",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
+        ));
+
+        // Add statistics
+        let total_text: String = self
+            .transcriptions
+            .iter()
+            .map(|t| t.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let word_count = total_text.split_whitespace().count();
+        let char_count = total_text.chars().count();
+
+        content.push_str("## Statistics\n\n");
+        content.push_str(&format!("- **Segments:** {}\n", self.transcriptions.len()));
+        content.push_str(&format!("- **Words:** {}\n", word_count));
+        content.push_str(&format!("- **Characters:** {}\n\n", char_count));
+
+        if let Some(first) = self.transcriptions.first() {
+            if let Some(last) = self.transcriptions.last() {
+                let duration = last.timestamp.signed_duration_since(first.timestamp);
+                let minutes = duration.num_minutes();
+                let seconds = duration.num_seconds() % 60;
+                content.push_str(&format!("- **Duration:** {}m {}s\n\n", minutes, seconds));
+            }
+        }
+
+        content.push_str("---\n\n");
+        content.push_str("## Transcript\n\n");
+
+        for (i, trans) in self.transcriptions.iter().enumerate() {
+            content.push_str(&format!(
+                "### Segment {} `{}`\n\n",
+                i + 1,
+                trans.timestamp.format("%H:%M:%S")
+            ));
+            content.push_str(&trans.text);
+            content.push_str("\n\n");
+        }
+
+        match std::fs::write(&filepath, content) {
+            Ok(_) => {
+                self.status_message = format!("Transcript exported to: {:?}", filename);
+                println!("Transcript exported to: {:?}", filepath);
+            }
+            Err(e) => {
+                self.error_message = format!("Failed to export transcript: {}", e);
+            }
         }
     }
 }
@@ -357,6 +491,19 @@ impl eframe::App for AudioAssistantApp {
                     self.current_summary = None;
                     self.status_message = "Cleared".to_string();
                 }
+
+                if !self.transcriptions.is_empty() {
+                    ui.menu_button("💾 Export Transcript", |ui| {
+                        if ui.button("📄 Plain Text (.txt)").clicked() {
+                            self.export_transcript_txt();
+                            ui.close_menu();
+                        }
+                        if ui.button("📝 Markdown (.md)").clicked() {
+                            self.export_transcript_markdown();
+                            ui.close_menu();
+                        }
+                    });
+                }
             });
 
             ui.add_space(10.0);
@@ -375,9 +522,277 @@ impl eframe::App for AudioAssistantApp {
             ui.separator();
             ui.add_space(10.0);
 
-            // Transcriptions section
+            // Live Streaming Transcription Display
+            if self.is_listening || !self.transcriptions.is_empty() {
+                ui.group(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.heading("📺 Live Transcript");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.checkbox(&mut self.show_statistics, "📊 Stats");
+                            ui.checkbox(&mut self.show_timestamps, "🕐 Timestamps");
+                            ui.checkbox(&mut self.auto_scroll_enabled, "⬇ Auto-scroll");
+                        });
+                    });
+
+                    // Search bar
+                    ui.horizontal(|ui| {
+                        ui.label("🔍");
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.search_query)
+                                .hint_text("Search transcript...")
+                                .desired_width(300.0),
+                        );
+
+                        if !self.search_query.is_empty() {
+                            if ui.button("✖").clicked() {
+                                self.search_query.clear();
+                            }
+                            ui.checkbox(&mut self.highlight_search, "Highlight");
+
+                            // Count matches
+                            let match_count: usize = self
+                                .transcriptions
+                                .iter()
+                                .filter(|t| {
+                                    t.text
+                                        .to_lowercase()
+                                        .contains(&self.search_query.to_lowercase())
+                                })
+                                .count();
+
+                            if match_count > 0 {
+                                ui.label(
+                                    egui::RichText::new(format!("{} matches", match_count))
+                                        .size(11.0)
+                                        .color(egui::Color32::from_rgb(50, 150, 50)),
+                                );
+                            } else {
+                                ui.label(
+                                    egui::RichText::new("No matches")
+                                        .size(11.0)
+                                        .color(egui::Color32::from_gray(120)),
+                                );
+                            }
+                        }
+                    });
+
+                    // Statistics display
+                    if self.show_statistics && !self.transcriptions.is_empty() {
+                        ui.separator();
+                        ui.horizontal(|ui| {
+                            let total_text: String = self
+                                .transcriptions
+                                .iter()
+                                .map(|t| t.text.as_str())
+                                .collect::<Vec<_>>()
+                                .join(" ");
+                            let word_count = total_text.split_whitespace().count();
+                            let char_count = total_text.chars().count();
+
+                            ui.label(
+                                egui::RichText::new(format!("📝 {} words", word_count))
+                                    .size(12.0)
+                                    .color(egui::Color32::from_gray(100)),
+                            );
+                            ui.separator();
+                            ui.label(
+                                egui::RichText::new(format!("🔤 {} characters", char_count))
+                                    .size(12.0)
+                                    .color(egui::Color32::from_gray(100)),
+                            );
+
+                            if let Some(first) = self.transcriptions.first() {
+                                if let Some(last) = self.transcriptions.last() {
+                                    let duration =
+                                        last.timestamp.signed_duration_since(first.timestamp);
+                                    let minutes = duration.num_minutes();
+                                    let seconds = duration.num_seconds() % 60;
+                                    ui.separator();
+                                    ui.label(
+                                        egui::RichText::new(format!("⏱ {}m {}s", minutes, seconds))
+                                            .size(12.0)
+                                            .color(egui::Color32::from_gray(100)),
+                                    );
+                                }
+                            }
+                        });
+                    }
+
+                    ui.separator();
+
+                    let scroll_area = egui::ScrollArea::vertical()
+                        .max_height(350.0)
+                        .auto_shrink([false, false])
+                        .stick_to_bottom(self.auto_scroll_enabled);
+
+                    scroll_area.show(ui, |ui| {
+                        if self.transcriptions.is_empty() {
+                            ui.vertical_centered(|ui| {
+                                ui.add_space(100.0);
+                                ui.label(
+                                    egui::RichText::new("🎙️ Waiting for transcriptions...")
+                                        .size(16.0)
+                                        .color(egui::Color32::GRAY),
+                                );
+                            });
+                        } else {
+                            // Filter transcriptions based on search query
+                            let search_lower = self.search_query.to_lowercase();
+                            let filtered: Vec<(usize, &TranscriptionResult)> = self
+                                .transcriptions
+                                .iter()
+                                .enumerate()
+                                .filter(|(_, t)| {
+                                    self.search_query.is_empty()
+                                        || t.text.to_lowercase().contains(&search_lower)
+                                })
+                                .collect();
+
+                            if filtered.is_empty() && !self.search_query.is_empty() {
+                                ui.vertical_centered(|ui| {
+                                    ui.add_space(100.0);
+                                    ui.label(
+                                        egui::RichText::new(format!(
+                                            "🔍 No results found for \"{}\"",
+                                            self.search_query
+                                        ))
+                                        .size(14.0)
+                                        .color(egui::Color32::GRAY),
+                                    );
+                                });
+                            } else {
+                                for (i, trans) in filtered {
+                                    // Calculate fade-in effect for recent transcriptions
+                                    let is_new =
+                                        if let Some(last_time) = self.last_transcription_time {
+                                            let elapsed = last_time.elapsed().as_secs_f32();
+                                            i == self.transcriptions.len() - 1 && elapsed < 2.0
+                                        } else {
+                                            false
+                                        };
+
+                                    // Check if this matches the search
+                                    let matches_search = !self.search_query.is_empty()
+                                        && trans.text.to_lowercase().contains(&search_lower);
+
+                                    let frame = if is_new {
+                                        egui::Frame::none()
+                                            .fill(egui::Color32::from_rgba_unmultiplied(
+                                                50, 150, 50, 30,
+                                            ))
+                                            .inner_margin(8.0)
+                                            .rounding(4.0)
+                                    } else if matches_search && self.highlight_search {
+                                        egui::Frame::none()
+                                            .fill(egui::Color32::from_rgba_unmultiplied(
+                                                255, 255, 150, 100,
+                                            ))
+                                            .inner_margin(8.0)
+                                            .rounding(4.0)
+                                    } else {
+                                        egui::Frame::none()
+                                            .fill(egui::Color32::from_gray(240))
+                                            .inner_margin(8.0)
+                                            .rounding(4.0)
+                                    };
+
+                                    frame.show(ui, |ui| {
+                                        if self.show_timestamps {
+                                            ui.horizontal(|ui| {
+                                                ui.label(
+                                                    egui::RichText::new(format!("#{}", i + 1))
+                                                        .size(11.0)
+                                                        .color(egui::Color32::from_gray(120)),
+                                                );
+                                                ui.label(
+                                                    egui::RichText::new(
+                                                        trans
+                                                            .timestamp
+                                                            .format("%H:%M:%S")
+                                                            .to_string(),
+                                                    )
+                                                    .size(11.0)
+                                                    .color(egui::Color32::from_gray(120))
+                                                    .monospace(),
+                                                );
+                                            });
+                                        }
+
+                                        // Display text with search highlighting
+                                        if matches_search
+                                            && self.highlight_search
+                                            && !self.search_query.is_empty()
+                                        {
+                                            // Simple highlighting by making matched text bold
+                                            ui.label(
+                                                egui::RichText::new(&trans.text)
+                                                    .size(14.0)
+                                                    .strong(),
+                                            );
+                                        } else {
+                                            ui.label(egui::RichText::new(&trans.text).size(14.0));
+                                        }
+                                    });
+
+                                    ui.add_space(6.0);
+                                }
+                            }
+                        }
+                    });
+
+                    // Status bar with copy button
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        if self.is_listening {
+                            ui.label(
+                                egui::RichText::new("● LIVE")
+                                    .color(egui::Color32::from_rgb(220, 50, 50))
+                                    .strong(),
+                            );
+                        } else {
+                            ui.label(
+                                egui::RichText::new("● STOPPED")
+                                    .color(egui::Color32::from_gray(120)),
+                            );
+                        }
+                        ui.separator();
+                        ui.label(format!("{} segments", self.transcriptions.len()));
+
+                        if self.pending_transcriptions > 0 {
+                            ui.separator();
+                            ui.label(
+                                egui::RichText::new(format!(
+                                    "⏳ Processing: {}",
+                                    self.pending_transcriptions
+                                ))
+                                .color(egui::Color32::from_rgb(200, 150, 50)),
+                            );
+                        }
+
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if !self.transcriptions.is_empty() {
+                                if ui.button("📋 Copy All").clicked() {
+                                    let full_text: String = self
+                                        .transcriptions
+                                        .iter()
+                                        .map(|t| t.text.as_str())
+                                        .collect::<Vec<_>>()
+                                        .join("\n\n");
+                                    ui.output_mut(|o| o.copied_text = full_text);
+                                    self.status_message =
+                                        "Transcript copied to clipboard".to_string();
+                                }
+                            }
+                        });
+                    });
+                });
+
+                ui.add_space(10.0);
+            }
+
+            // Collapsible detailed transcriptions section
             ui.collapsing(
-                format!("📝 Transcriptions ({})", self.transcriptions.len()),
+                format!("📝 Detailed Transcriptions ({})", self.transcriptions.len()),
                 |ui| {
                     egui::ScrollArea::vertical()
                         .max_height(200.0)
@@ -390,6 +805,14 @@ impl eframe::App for AudioAssistantApp {
                                         trans.timestamp.format("%H:%M:%S")
                                     ));
                                     ui.label(&trans.text);
+                                    ui.label(
+                                        egui::RichText::new(format!(
+                                            "File: {:?}",
+                                            trans.audio_file.file_name().unwrap_or_default()
+                                        ))
+                                        .size(10.0)
+                                        .color(egui::Color32::from_gray(120)),
+                                    );
                                 });
                                 ui.add_space(5.0);
                             }
@@ -451,7 +874,7 @@ async fn main() -> Result<()> {
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([800.0, 900.0])
+            .with_inner_size([900.0, 1000.0])
             .with_title("Audio Assistant"),
         ..Default::default()
     };
