@@ -1,0 +1,19 @@
+/target
+
+# Config files (may contain API keys)
+config.json
+
+# Audio data
+audio_chunks/
+transcriptions/
+summaries/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

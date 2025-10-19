@@ -1,0 +1,11 @@
+{
+  "openai_api_key": "sk-your-api-key-here",
+  "chunk_duration_secs": 30,
+  "sample_rate": 16000,
+  "audio_chunks_dir": "/home/your-username/.local/share/audio-assistant/audio_chunks",
+  "transcriptions_dir": "/home/your-username/.local/share/audio-assistant/transcriptions",
+  "summaries_dir": "/home/your-username/.local/share/audio-assistant/summaries",
+  "keep_audio_files": false,
+  "realtime_processing": true,
+  "summarization_model": "gpt-4o-mini"
+}
